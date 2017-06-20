@@ -1,0 +1,45 @@
+                            | # Execution begins at address 0 
+0x000:                      | 	.pos 0
+0x000: 30f40002000000000000 | 	irmovq stack, %rsp  	# Set up stack pointer
+0x00a: 804800000000000000   | 	call main		# Execute main program
+0x013: 00                   | 	halt			# Terminate program 
+                            | 
+                            | # Sample linked list
+0x018:                      | .align 8
+0x018:                      | ele1:
+0x018: 0a00000000000000     | .quad 0x00a
+0x020: 2800000000000000     | .quad ele2
+0x028:                      | ele2:
+0x028: b000000000000000     | .quad 0x0b0
+0x030: 3800000000000000     | .quad ele3
+0x038:                      | ele3:
+0x038: 000c000000000000     | .quad 0xc00
+0x040: 0000000000000000     | .quad 0
+                            | 
+0x048: 30f71800000000000000 | main:	irmovq ele1,%rdi
+0x052: 805c00000000000000   | 		call sum_list		# Bubble(array, )
+0x05b: 90                   | 		ret
+                            | 
+0x05c:                      | sum_list:
+                            | 		#testq	%rdi, %rdi
+0x05c: 2078                 | 	rrmovq		%rdi, %r8		#Store %rdi to test
+0x05e: 6288                 | 	andq		%r8, %r8		#Set the condition codes
+0x060: 739700000000000000   | 	je	end						#jump to end
+0x069: 30f00000000000000000 | 	irmovq		$0, %rax		#set rax to 1
+0x073:                      | loop:
+                            | 		#addq	(%rdi), %rax
+0x073: 50970000000000000000 | 	mrmovq		(%rdi), %r9		#Store the memory location
+0x07d: 6090                 | 	addq		%r9, %rax		#Add to %rax 
+0x07f: 50770800000000000000 | 	mrmovq		8(%rdi), %rdi		
+                            | 		#testq	%rdi, %rdi
+0x089: 207a                 | 	rrmovq		%rdi, %r10		#Store %rdi
+0x08b: 62aa                 | 	andq		%r10, %r10		#set condition codes
+0x08d: 747300000000000000   | 	jne	loop					#loop back
+0x096: 90                   | 	ret
+0x097:                      | end:
+0x097: 30f00000000000000000 | 	irmovq		$0, %rax
+0x0a1: 90                   | 	ret
+                            | 
+                            | # Stack starts here and grows to lower addresses
+0x200:                      | 	.pos 0x200
+0x200:                      | stack:

@@ -1,0 +1,170 @@
+#/* $begin ncopy-ys */
+##################################################################
+# ncopy.ys - Copy a src block of len words to dst.
+# Return the number of positive words (>0) contained in src.
+#
+# Daniel Cueva
+# Net ID: dcueva91
+#
+# To optimize this code, I first implemented the iaddq instruction
+# This cut down on the extra work of moving an immediate to a register
+# prior to adding the two.
+# I then started to implement loop unrolling
+# I started with a loop unrolling factor of 2, then later extended it to 4
+# then 6, then 8
+# The performance wasn't incresing much at a factor of 8, so I stopped there
+# 
+# Loop unrolling is done by first chacking to see if there is more or equal
+# than the loop factor remaining on the elements
+# If not, we can jump to the cleanup code (when less than factor is left)
+# If there are at least loop factor elements we can start unrolling.
+# At each stage of the unroll we copy one element from src to dest
+# every other stage we will store two items from source
+#	This eliminates load hazards by not storing and copying back to back
+# The count is updated through the unrolling
+# When the loop has executed to the point where there are less than
+# loop elements remaining to copy, we go to cleanup code
+# At cleanup, we copy the remaining elements over
+# checking each one to continue.
+#
+#Once done, the function returns
+#
+##################################################################
+# Do not modify this portion
+# Function prologue.
+# %rdi = src, %rsi = dst, %rdx = len
+ncopy:
+
+##################################################################
+# You can modify this portion
+	# Loop header
+	xorq 	%rax, %rax		# count = 0;	
+	andq 	%rdx, %rdx		# if length <= 0
+	jle 	Done			# if so, goto Done:
+	iaddq	$-8, %rdx		#Decrement length by 4
+	jl		Cleanup			#If less than 0, go to cleanup
+Loop:	
+	mrmovq 	(%rdi), %r10	#Store src[i]
+	mrmovq	8(%rdi), %r11	#store src[i+1]. Avoid load hazard
+	rmmovq 	%r10, (%rsi)	#src[i] to dest[i]
+	andq 	%r10, %r10		#set CC for src[i]
+	jle 	Next1			#if src[i] <= 0, go to next1
+	iaddq 	$1, %rax		# count++
+Next1:	
+	rmmovq	%r11, 8(%rsi)	#src[i+1] to dest[i+1]
+	andq	%r11, %r11		#set CC for src[i+1]
+	jle		Next2			#if src[i+1] <= 0, next2
+	iaddq 	$1, %rax		# count++
+Next2:
+	mrmovq 	16(%rdi), %r10	#Store src[i+2]
+	mrmovq	24(%rdi), %r11	#store src[i+3]. Avoid load hazard
+	rmmovq 	%r10, 16(%rsi)	#src[i+2] to dest[i+2]
+	andq 	%r10, %r10		#set CC for src[i+2]
+	jle 	Next3			#if src[i+2] <= 0, go to next3
+	iaddq 	$1, %rax		# count++
+Next3:	
+	rmmovq	%r11, 24(%rsi)	#src[i+3] to dest[i+3]
+	andq	%r11, %r11		#set CC for src[i+3]
+	jle		Next4			#if src[i+3] <= 0, next4
+	iaddq 	$1, %rax		# count++
+Next4:
+	mrmovq 	32(%rdi), %r10	#Store src[i+4]
+	mrmovq	40(%rdi), %r11	#store src[i+5]. Avoid load hazard
+	rmmovq 	%r10, 32(%rsi)	#src[i+4] to dest[i+4]
+	andq 	%r10, %r10		#set CC for src[i+4]
+	jle 	Next5			#if src[i+4] <= 0, go to next5
+	iaddq 	$1, %rax		# count++
+Next5:	
+	rmmovq	%r11, 40(%rsi)	#src[i+5] to dest[i+5]
+	andq	%r11, %r11		#set CC for src[i+5]
+	jle		Next6			#if src[i+5] <= 0, next6
+	iaddq 	$1, %rax		# count++
+Next6:
+	mrmovq 	48(%rdi), %r10	#Store src[i+6]
+	mrmovq	56(%rdi), %r11	#store src[i+7]. Avoid load hazard
+	rmmovq 	%r10, 48(%rsi)	#src[i+6] to dest[i+6]
+	andq 	%r10, %r10		#set CC for src[i+6]
+	jle 	Next7			#if src[i+6] <= 0, go to next7
+	iaddq 	$1, %rax		# count++
+Next7:	
+	rmmovq	%r11, 56(%rsi)	#src[i+7] to dest[i+7]
+	andq	%r11, %r11		#set CC for src[i+7]
+	jle		Check			#if src[i+7] <= 0, check
+	iaddq 	$1, %rax		# count++
+Check:
+	iaddq	$64, %rdi		#add 32(4 bytes) to src
+	iaddq	$64, %rsi		#add 32(4 bytes) to dest
+	iaddq	$-8, %rdx		#Length - 4. Set CC
+	jge		Loop			#If length is still above 0, loop
+#Now we have gone through the loop with multiple of 4
+#We have to clean up the code, because there could be 0-3 things
+#To still update
+#Run through the same code, but only on the items left
+Cleanup:
+	iaddq	$8, %rdx		#Add 4 back to length to restore the value
+Cleanup1:
+	iaddq	$-1, %rdx		#Subtract 1 to length, set CC
+	jl		Done			#If there are 0 left, jump to done
+	mrmovq 	(%rdi), %r10	#Store src[i]
+	mrmovq	8(%rdi), %r11	#store src[i+1]. Avoid load hazard
+	rmmovq 	%r10, (%rsi)	#src[i] to dest[i]
+	andq 	%r10, %r10		#set CC for src[i]
+	jle 	Cleanup2		#if src[i] <= 0, go to cleanup2
+	iaddq 	$1, %rax		# count++
+Cleanup2:	
+	iaddq	$-1, %rdx		#Subtract 1 to length, set CC
+	jl		Done			#If there are 0 left, jump to done
+	rmmovq	%r11, 8(%rsi)	#src[i+1] to dest[i+1]
+	andq	%r11, %r11		#set CC for src[i+1]
+	jle		Cleanup3		#if src[i+1] <= 0, cleanup3
+	iaddq 	$1, %rax		# count++
+Cleanup3:
+	iaddq	$-1, %rdx		#Subtract 1 to length, set CC
+	jl		Done			#If there are 0 left, jump to done
+	mrmovq 	16(%rdi), %r10	#Store src[i+2]
+	mrmovq	24(%rdi), %r11	#store src[i+3]. Avoid load hazard
+	rmmovq 	%r10, 16(%rsi)	#src[i+2] to dest[i+2]
+	andq 	%r10, %r10		#set CC for src[i+2]
+	jle 	Cleanup4		#if src[i+2] <= 0, go to cleanup4
+	iaddq 	$1, %rax		# count++
+Cleanup4:	
+	iaddq	$-1, %rdx		#Subtract 1 to length, set CC
+	jl		Done			#If there are 0 left, jump to done
+	rmmovq	%r11, 24(%rsi)	#src[i+3] to dest[i+3]
+	andq	%r11, %r11		#set CC for src[i+3]
+	jle		Cleanup5		#if src[i+1] <= 0, cleanup5
+	iaddq 	$1, %rax		# count++
+Cleanup5:
+	iaddq	$-1, %rdx		#Subtract 1 to length, set CC
+	jl		Done			#If there are 0 left, jump to done
+	mrmovq 	32(%rdi), %r10	#Store src[i+4]
+	mrmovq	40(%rdi), %r11	#store src[i+5]. Avoid load hazard
+	rmmovq 	%r10, 32(%rsi)	#src[i+2] to dest[i+4]
+	andq 	%r10, %r10		#set CC for src[i+4]
+	jle 	Cleanup6		#if src[i+2] <= 0, go to cleanup6
+	iaddq 	$1, %rax		# count++
+Cleanup6:	
+	iaddq	$-1, %rdx		#Subtract 1 to length, set CC
+	jl		Done			#If there are 0 left, jump to done
+	rmmovq	%r11, 40(%rsi)	#src[i+5] to dest[i+5]
+	andq	%r11, %r11		#set CC for src[i+5]
+	jle		Cleanup7		#if src[i+1] <= 0, cleanup7
+	iaddq 	$1, %rax		# count++
+Cleanup7:
+	iaddq	$-1, %rdx		#Subtract 1 to length, set CC
+	jl		Done			#If there are 0 left, jump to done
+	mrmovq 	48(%rdi), %r10	#Store src[i+4]
+	rmmovq 	%r10, 48(%rsi)	#src[i+4] to dest[i+4]
+	andq 	%r10, %r10		#set CC for src[i+4]
+	jle 	Done			#if src[i+4] <= 0, go to done
+	iaddq 	$1, %rax		# count++
+
+##################################################################
+# Do not modify the following section of code
+# Function epilogue.
+Done:
+	ret
+##################################################################
+# Keep the following label at the end of your function
+End:
+#/* $end ncopy-ys */

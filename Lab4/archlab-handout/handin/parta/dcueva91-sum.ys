@@ -1,0 +1,48 @@
+# Daniel Cueva
+# Net ID: dcueva91
+
+# Execution begins at address 0 
+	.pos 0
+	irmovq stack, %rsp  	# Set up stack pointer
+	call main		# Execute main program
+	halt			# Terminate program 
+
+# Sample linked list
+.align 8
+ele1:
+.quad 0x00a
+.quad ele2
+ele2:
+.quad 0x0b0
+.quad ele3
+ele3:
+.quad 0xc00
+.quad 0
+
+main:	irmovq 	ele1, %rdi
+		call 	sum_list		# sum_list(linked_list)
+		ret
+
+sum_list:
+		#testq	%rdi, %rdi
+	rrmovq		%rdi, %r8		#Store %rdi to test
+	andq		%r8, %r8		#Set the condition codes
+	je	end						#jump to end
+	irmovq		$0, %rax		#set rax to 1
+loop:
+		#addq	(%rdi), %rax
+	mrmovq		(%rdi), %r9		#Store the memory location
+	addq		%r9, %rax		#Add to %rax 
+	mrmovq		8(%rdi), %rdi		
+		#testq	%rdi, %rdi
+	rrmovq		%rdi, %r10		#Store %rdi
+	andq		%r10, %r10		#set condition codes
+	jne	loop					#loop back
+	ret
+end:
+	irmovq		$0, %rax
+	ret
+
+# Stack starts here and grows to lower addresses
+	.pos 0x200
+stack:

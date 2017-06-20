@@ -1,0 +1,35 @@
+# Daniel Cueva
+# Net ID: dcueva91
+# BYU ECEn 424
+# This is the file you start with for Lab 5.
+# After making your edits and verifying that it works, this is also
+# the file you submit. Do not change the first or last instructions. 
+#
+# Put your name here
+# Put the date here
+
+ .pos 0
+    irmovq Stack,%rsp
+# The 18 instructions you can modify start here 
+	divq	%rsp, %rcx
+	divq	%rsp, %rcx			#Div with dependency for increased CPE
+	divq	%rsp, %rcx			#Div with dependency for increased CPE
+	divq	%rsp, %rcx			#Div with dependency for increased CPE
+	divq	%rsp, %rcx			#Div with dependency for increased CPE
+	divq	%rsp, %rcx			#Div with dependency for increased CPE
+	divq	%rsp, %rcx			#Div with dependency for increased CPE
+	divq	%rsp, %rcx			#Div with dependency for increased CPE
+	divq	%rsp, %rcx			#Div with dependency for increased CPE
+	divq	%rsp, %rcx			#Div with dependency for increased CPE
+	divq	%rsp, %rcx			#Div with dependency for increased CPE
+	divq	%rsp, %rcx			#Div with dependency for increased CPE
+	divq	%rsp, %rcx			#Div with dependency for increased CPE
+	mrmovq	(%rcx), %rdx		#Load Hazard
+	mrmovq	(%rax), %rdx		#Out of order
+	rmmovq	%rax, (%rcx)		#WAW and RAW
+	rmmovq	%rax, (%rsp)		#CDB
+	mrmovq	(%rsp), %rax		#F-Unit Hazard
+# The 18 instructions you can modify end here
+    halt
+    .pos 0x200
+Stack:

@@ -1,0 +1,35 @@
+                            | # Daniel Cueva
+                            | # Net ID: dcueva91
+                            | # BYU ECEn 424
+                            | # This is the file you start with for Lab 5.
+                            | # After making your edits and verifying that it works, this is also
+                            | # the file you submit. Do not change the first or last instructions. 
+                            | #
+                            | # Put your name here
+                            | # Put the date here
+                            | 
+0x000:                      |  .pos 0
+0x000: 30f40002000000000000 |     irmovq Stack,%rsp
+                            | # The 18 instructions you can modify start here 
+0x00a: 6541                 | 	divq	%rsp, %rcx
+0x00c: 6541                 | 	divq	%rsp, %rcx			#Div with dependency for increased CPE
+0x00e: 6541                 | 	divq	%rsp, %rcx			#Div with dependency for increased CPE
+0x010: 6541                 | 	divq	%rsp, %rcx			#Div with dependency for increased CPE
+0x012: 6541                 | 	divq	%rsp, %rcx			#Div with dependency for increased CPE
+0x014: 6541                 | 	divq	%rsp, %rcx			#Div with dependency for increased CPE
+0x016: 6541                 | 	divq	%rsp, %rcx			#Div with dependency for increased CPE
+0x018: 6541                 | 	divq	%rsp, %rcx			#Div with dependency for increased CPE
+0x01a: 6541                 | 	divq	%rsp, %rcx			#Div with dependency for increased CPE
+0x01c: 6541                 | 	divq	%rsp, %rcx			#Div with dependency for increased CPE
+0x01e: 6541                 | 	divq	%rsp, %rcx			#Div with dependency for increased CPE
+0x020: 6541                 | 	divq	%rsp, %rcx			#Div with dependency for increased CPE
+0x022: 6541                 | 	divq	%rsp, %rcx			#Div with dependency for increased CPE
+0x024: 50210000000000000000 | 	mrmovq	(%rcx), %rdx		#Load Hazard
+0x02e: 50200000000000000000 | 	mrmovq	(%rax), %rdx		#Out of order
+0x038: 40010000000000000000 | 	rmmovq	%rax, (%rcx)		#WAW and RAW
+0x042: 40040000000000000000 | 	rmmovq	%rax, (%rsp)		#CDB
+0x04c: 50040000000000000000 | 	mrmovq	(%rsp), %rax		#F-Unit Hazard
+                            | # The 18 instructions you can modify end here
+0x056: 00                   |     halt
+0x200:                      |     .pos 0x200
+0x200:                      | Stack:

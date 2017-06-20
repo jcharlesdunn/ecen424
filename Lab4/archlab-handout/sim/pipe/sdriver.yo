@@ -1,0 +1,227 @@
+                            | #######################################################################
+                            | # Test for copying block of size 4;
+                            | #######################################################################
+0x000:                      | 	.pos 0
+0x000: 30f45004000000000000 | main:	irmovq Stack, %rsp  	# Set up stack pointer
+                            | 
+                            | 	# Set up arguments for copy function and then invoke it
+0x00a: 30f20400000000000000 | 	irmovq $4, %rdx		# src and dst have 4 elements
+0x014: 30f6a803000000000000 | 	irmovq dest, %rsi	# dst array
+0x01e: 30f77003000000000000 | 	irmovq src, %rdi	# src array
+0x028: 803200000000000000   | 	call ncopy		 
+0x031: 00                   | 	halt			# should halt with num nonzeros in %rax
+0x032:                      | StartFun:
+                            | #/* $begin ncopy-ys */
+                            | ##################################################################
+                            | # ncopy.ys - Copy a src block of len words to dst.
+                            | # Return the number of positive words (>0) contained in src.
+                            | #
+                            | # Daniel Cueva
+                            | # Net ID: dcueva91
+                            | #
+                            | # To optimize this code, I first implemented the iaddq instruction
+                            | # This cut down on the extra work of moving an immediate to a register
+                            | # prior to adding the two.
+                            | # I then started to implement loop unrolling
+                            | # I started with a loop unrolling factor of 2, then later extended it to 4
+                            | # then 6, then 8
+                            | # The performance wasn't incresing much at a factor of 8, so I stopped there
+                            | # 
+                            | # Loop unrolling is done by first chacking to see if there is more or equal
+                            | # than the loop factor remaining on the elements
+                            | # If not, we can jump to the cleanup code (when less than factor is left)
+                            | # If there are at least loop factor elements we can start unrolling.
+                            | # At each stage of the unroll we copy one element from src to dest
+                            | # every other stage we will store two items from source
+                            | #	This eliminates load hazards by not storing and copying back to back
+                            | # The count is updated through the unrolling
+                            | # When the loop has executed to the point where there are less than
+                            | # loop elements remaining to copy, we go to cleanup code
+                            | # At cleanup, we copy the remaining elements over
+                            | # checking each one to continue.
+                            | #
+                            | #Once done, the function returns
+                            | #
+                            | ##################################################################
+                            | # Do not modify this portion
+                            | # Function prologue.
+                            | # %rdi = src, %rsi = dst, %rdx = len
+0x032:                      | ncopy:
+                            | 
+                            | ##################################################################
+                            | # You can modify this portion
+                            | 	# Loop header
+0x032: 6300                 | 	xorq 	%rax, %rax		# count = 0;	
+0x034: 6222                 | 	andq 	%rdx, %rdx		# if length <= 0
+0x036: 716f03000000000000   | 	jle 	Done			# if so, goto Done:
+0x03f: c0f2f8ffffffffffffff | 	iaddq	$-8, %rdx		#Decrement length by 4
+0x049: 72c101000000000000   | 	jl		Cleanup			#If less than 0, go to cleanup
+0x052:                      | Loop:	
+0x052: 50a70000000000000000 | 	mrmovq 	(%rdi), %r10	#Store src[i]
+0x05c: 50b70800000000000000 | 	mrmovq	8(%rdi), %r11	#store src[i+1]. Avoid load hazard
+0x066: 40a60000000000000000 | 	rmmovq 	%r10, (%rsi)	#src[i] to dest[i]
+0x070: 62aa                 | 	andq 	%r10, %r10		#set CC for src[i]
+0x072: 718500000000000000   | 	jle 	Next1			#if src[i] <= 0, go to next1
+0x07b: c0f00100000000000000 | 	iaddq 	$1, %rax		# count++
+0x085:                      | Next1:	
+0x085: 40b60800000000000000 | 	rmmovq	%r11, 8(%rsi)	#src[i+1] to dest[i+1]
+0x08f: 62bb                 | 	andq	%r11, %r11		#set CC for src[i+1]
+0x091: 71a400000000000000   | 	jle		Next2			#if src[i+1] <= 0, next2
+0x09a: c0f00100000000000000 | 	iaddq 	$1, %rax		# count++
+0x0a4:                      | Next2:
+0x0a4: 50a71000000000000000 | 	mrmovq 	16(%rdi), %r10	#Store src[i+2]
+0x0ae: 50b71800000000000000 | 	mrmovq	24(%rdi), %r11	#store src[i+3]. Avoid load hazard
+0x0b8: 40a61000000000000000 | 	rmmovq 	%r10, 16(%rsi)	#src[i+2] to dest[i+2]
+0x0c2: 62aa                 | 	andq 	%r10, %r10		#set CC for src[i+2]
+0x0c4: 71d700000000000000   | 	jle 	Next3			#if src[i+2] <= 0, go to next3
+0x0cd: c0f00100000000000000 | 	iaddq 	$1, %rax		# count++
+0x0d7:                      | Next3:	
+0x0d7: 40b61800000000000000 | 	rmmovq	%r11, 24(%rsi)	#src[i+3] to dest[i+3]
+0x0e1: 62bb                 | 	andq	%r11, %r11		#set CC for src[i+3]
+0x0e3: 71f600000000000000   | 	jle		Next4			#if src[i+3] <= 0, next4
+0x0ec: c0f00100000000000000 | 	iaddq 	$1, %rax		# count++
+0x0f6:                      | Next4:
+0x0f6: 50a72000000000000000 | 	mrmovq 	32(%rdi), %r10	#Store src[i+4]
+0x100: 50b72800000000000000 | 	mrmovq	40(%rdi), %r11	#store src[i+5]. Avoid load hazard
+0x10a: 40a62000000000000000 | 	rmmovq 	%r10, 32(%rsi)	#src[i+4] to dest[i+4]
+0x114: 62aa                 | 	andq 	%r10, %r10		#set CC for src[i+4]
+0x116: 712901000000000000   | 	jle 	Next5			#if src[i+4] <= 0, go to next5
+0x11f: c0f00100000000000000 | 	iaddq 	$1, %rax		# count++
+0x129:                      | Next5:	
+0x129: 40b62800000000000000 | 	rmmovq	%r11, 40(%rsi)	#src[i+5] to dest[i+5]
+0x133: 62bb                 | 	andq	%r11, %r11		#set CC for src[i+5]
+0x135: 714801000000000000   | 	jle		Next6			#if src[i+5] <= 0, next6
+0x13e: c0f00100000000000000 | 	iaddq 	$1, %rax		# count++
+0x148:                      | Next6:
+0x148: 50a73000000000000000 | 	mrmovq 	48(%rdi), %r10	#Store src[i+6]
+0x152: 50b73800000000000000 | 	mrmovq	56(%rdi), %r11	#store src[i+7]. Avoid load hazard
+0x15c: 40a63000000000000000 | 	rmmovq 	%r10, 48(%rsi)	#src[i+6] to dest[i+6]
+0x166: 62aa                 | 	andq 	%r10, %r10		#set CC for src[i+6]
+0x168: 717b01000000000000   | 	jle 	Next7			#if src[i+6] <= 0, go to next7
+0x171: c0f00100000000000000 | 	iaddq 	$1, %rax		# count++
+0x17b:                      | Next7:	
+0x17b: 40b63800000000000000 | 	rmmovq	%r11, 56(%rsi)	#src[i+7] to dest[i+7]
+0x185: 62bb                 | 	andq	%r11, %r11		#set CC for src[i+7]
+0x187: 719a01000000000000   | 	jle		Check			#if src[i+7] <= 0, check
+0x190: c0f00100000000000000 | 	iaddq 	$1, %rax		# count++
+0x19a:                      | Check:
+0x19a: c0f74000000000000000 | 	iaddq	$64, %rdi		#add 32(4 bytes) to src
+0x1a4: c0f64000000000000000 | 	iaddq	$64, %rsi		#add 32(4 bytes) to dest
+0x1ae: c0f2f8ffffffffffffff | 	iaddq	$-8, %rdx		#Length - 4. Set CC
+0x1b8: 755200000000000000   | 	jge		Loop			#If length is still above 0, loop
+                            | #Now we have gone through the loop with multiple of 4
+                            | #We have to clean up the code, because there could be 0-3 things
+                            | #To still update
+                            | #Run through the same code, but only on the items left
+0x1c1:                      | Cleanup:
+0x1c1: c0f20800000000000000 | 	iaddq	$8, %rdx		#Add 4 back to length to restore the value
+0x1cb:                      | Cleanup1:
+0x1cb: c0f2ffffffffffffffff | 	iaddq	$-1, %rdx		#Subtract 1 to length, set CC
+0x1d5: 726f03000000000000   | 	jl		Done			#If there are 0 left, jump to done
+0x1de: 50a70000000000000000 | 	mrmovq 	(%rdi), %r10	#Store src[i]
+0x1e8: 50b70800000000000000 | 	mrmovq	8(%rdi), %r11	#store src[i+1]. Avoid load hazard
+0x1f2: 40a60000000000000000 | 	rmmovq 	%r10, (%rsi)	#src[i] to dest[i]
+0x1fc: 62aa                 | 	andq 	%r10, %r10		#set CC for src[i]
+0x1fe: 711102000000000000   | 	jle 	Cleanup2		#if src[i] <= 0, go to cleanup2
+0x207: c0f00100000000000000 | 	iaddq 	$1, %rax		# count++
+0x211:                      | Cleanup2:	
+0x211: c0f2ffffffffffffffff | 	iaddq	$-1, %rdx		#Subtract 1 to length, set CC
+0x21b: 726f03000000000000   | 	jl		Done			#If there are 0 left, jump to done
+0x224: 40b60800000000000000 | 	rmmovq	%r11, 8(%rsi)	#src[i+1] to dest[i+1]
+0x22e: 62bb                 | 	andq	%r11, %r11		#set CC for src[i+1]
+0x230: 714302000000000000   | 	jle		Cleanup3		#if src[i+1] <= 0, cleanup3
+0x239: c0f00100000000000000 | 	iaddq 	$1, %rax		# count++
+0x243:                      | Cleanup3:
+0x243: c0f2ffffffffffffffff | 	iaddq	$-1, %rdx		#Subtract 1 to length, set CC
+0x24d: 726f03000000000000   | 	jl		Done			#If there are 0 left, jump to done
+0x256: 50a71000000000000000 | 	mrmovq 	16(%rdi), %r10	#Store src[i+2]
+0x260: 50b71800000000000000 | 	mrmovq	24(%rdi), %r11	#store src[i+3]. Avoid load hazard
+0x26a: 40a61000000000000000 | 	rmmovq 	%r10, 16(%rsi)	#src[i+2] to dest[i+2]
+0x274: 62aa                 | 	andq 	%r10, %r10		#set CC for src[i+2]
+0x276: 718902000000000000   | 	jle 	Cleanup4		#if src[i+2] <= 0, go to cleanup4
+0x27f: c0f00100000000000000 | 	iaddq 	$1, %rax		# count++
+0x289:                      | Cleanup4:	
+0x289: c0f2ffffffffffffffff | 	iaddq	$-1, %rdx		#Subtract 1 to length, set CC
+0x293: 726f03000000000000   | 	jl		Done			#If there are 0 left, jump to done
+0x29c: 40b61800000000000000 | 	rmmovq	%r11, 24(%rsi)	#src[i+3] to dest[i+3]
+0x2a6: 62bb                 | 	andq	%r11, %r11		#set CC for src[i+3]
+0x2a8: 71bb02000000000000   | 	jle		Cleanup5		#if src[i+1] <= 0, cleanup5
+0x2b1: c0f00100000000000000 | 	iaddq 	$1, %rax		# count++
+0x2bb:                      | Cleanup5:
+0x2bb: c0f2ffffffffffffffff | 	iaddq	$-1, %rdx		#Subtract 1 to length, set CC
+0x2c5: 726f03000000000000   | 	jl		Done			#If there are 0 left, jump to done
+0x2ce: 50a72000000000000000 | 	mrmovq 	32(%rdi), %r10	#Store src[i+4]
+0x2d8: 50b72800000000000000 | 	mrmovq	40(%rdi), %r11	#store src[i+5]. Avoid load hazard
+0x2e2: 40a62000000000000000 | 	rmmovq 	%r10, 32(%rsi)	#src[i+2] to dest[i+4]
+0x2ec: 62aa                 | 	andq 	%r10, %r10		#set CC for src[i+4]
+0x2ee: 710103000000000000   | 	jle 	Cleanup6		#if src[i+2] <= 0, go to cleanup6
+0x2f7: c0f00100000000000000 | 	iaddq 	$1, %rax		# count++
+0x301:                      | Cleanup6:	
+0x301: c0f2ffffffffffffffff | 	iaddq	$-1, %rdx		#Subtract 1 to length, set CC
+0x30b: 726f03000000000000   | 	jl		Done			#If there are 0 left, jump to done
+0x314: 40b62800000000000000 | 	rmmovq	%r11, 40(%rsi)	#src[i+5] to dest[i+5]
+0x31e: 62bb                 | 	andq	%r11, %r11		#set CC for src[i+5]
+0x320: 713303000000000000   | 	jle		Cleanup7		#if src[i+1] <= 0, cleanup7
+0x329: c0f00100000000000000 | 	iaddq 	$1, %rax		# count++
+0x333:                      | Cleanup7:
+0x333: c0f2ffffffffffffffff | 	iaddq	$-1, %rdx		#Subtract 1 to length, set CC
+0x33d: 726f03000000000000   | 	jl		Done			#If there are 0 left, jump to done
+0x346: 50a73000000000000000 | 	mrmovq 	48(%rdi), %r10	#Store src[i+4]
+0x350: 40a63000000000000000 | 	rmmovq 	%r10, 48(%rsi)	#src[i+4] to dest[i+4]
+0x35a: 62aa                 | 	andq 	%r10, %r10		#set CC for src[i+4]
+0x35c: 716f03000000000000   | 	jle 	Done			#if src[i+4] <= 0, go to done
+0x365: c0f00100000000000000 | 	iaddq 	$1, %rax		# count++
+                            | 
+                            | ##################################################################
+                            | # Do not modify the following section of code
+                            | # Function epilogue.
+0x36f:                      | Done:
+0x36f: 90                   | 	ret
+                            | ##################################################################
+                            | # Keep the following label at the end of your function
+0x370:                      | End:
+                            | #/* $end ncopy-ys */
+0x370:                      | EndFun:
+                            | 
+                            | ###############################
+                            | # Source and destination blocks 
+                            | ###############################
+0x370:                      | 	.align 8
+0x370:                      | src:
+0x370: ffffffffffffffff     | 	.quad -1
+0x378: feffffffffffffff     | 	.quad -2
+0x380: 0300000000000000     | 	.quad 3
+0x388: 0400000000000000     | 	.quad 4
+0x390: fadebc0000000000     | 	.quad 0xbcdefa # This shouldn't get moved
+                            | 
+0x3a0:                      | 	.align 16
+0x3a0:                      | Predest:
+0x3a0: fadebc0000000000     | 	.quad 0xbcdefa
+0x3a8:                      | dest:
+0x3a8: abefcd0000000000     | 	.quad 0xcdefab
+0x3b0: abefcd0000000000     | 	.quad 0xcdefab
+0x3b8: abefcd0000000000     | 	.quad 0xcdefab
+0x3c0: abefcd0000000000     | 	.quad 0xcdefab
+0x3c8:                      | Postdest:
+0x3c8: bcfade0000000000     | 	.quad 0xdefabc
+                            | 
+0x3d0:                      | .align 8
+                            | # Run time stack
+0x3d0: 0000000000000000     | 	.quad 0
+0x3d8: 0000000000000000     | 	.quad 0
+0x3e0: 0000000000000000     | 	.quad 0
+0x3e8: 0000000000000000     | 	.quad 0
+0x3f0: 0000000000000000     | 	.quad 0
+0x3f8: 0000000000000000     | 	.quad 0
+0x400: 0000000000000000     | 	.quad 0
+0x408: 0000000000000000     | 	.quad 0
+0x410: 0000000000000000     | 	.quad 0
+0x418: 0000000000000000     | 	.quad 0
+0x420: 0000000000000000     | 	.quad 0
+0x428: 0000000000000000     | 	.quad 0
+0x430: 0000000000000000     | 	.quad 0
+0x438: 0000000000000000     | 	.quad 0
+0x440: 0000000000000000     | 	.quad 0
+0x448: 0000000000000000     | 	.quad 0
+                            | 
+0x450:                      | Stack:

